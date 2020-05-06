@@ -14,15 +14,15 @@ class News extends JsonResource
      */
     public function toArray($request)
     {
-        //\Log::info($this->collection);
         return [
             'uuid' => $this->uuid,
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
             'translation' => $this->translation,
             'category' => $this->category,
-            // 'translation' => NewsLang::collection($this->whenLoaded('translation')),
-            // 'category' => NewsCategory1::collection($this->whenLoaded('category')),
+            'tags' => $this->tags,
         ];
  
     }

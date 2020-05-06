@@ -2,18 +2,18 @@
 
 namespace Scaupize1123\JustOfficalNews\Controllers\Api;
 
-use Scaupize1123\JustOfficalNews\News;
+use Storage;
+use Validator;
+use App\Helpers;
+use App\Traits\ImageTrait;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Input;
-use Scaupize1123\JustOfficalNews\Interfaces\NewsRepositoryInterface;
+use Scaupize1123\JustOfficalNews\News;
 use App\Exceptions\Api\BadRequestException;
-use App\Helpers;
 use Scaupize1123\JustOfficalNews\Resources\News as NewsResources;
+use Scaupize1123\JustOfficalNews\Interfaces\NewsRepositoryInterface;
 use Scaupize1123\JustOfficalNews\Resources\SignleNews as SingleNewsResources;
-use App\Traits\ImageTrait;
-use Validator;
-use Storage;
-use Illuminate\Support\Str;
 
 class NewsController extends \App\Http\Controllers\Controller
 {
@@ -53,18 +53,18 @@ class NewsController extends \App\Http\Controllers\Controller
         $filter['sort_name'] = $sort_name ?? 'created_at';
         $filter['sort_type'] = $sort_type ?? 'desc';
         $result = $this->newsRepo->getListPage($filter);
-        \Log::info($result);
+
         return NewsResources::collection($result);
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \Illuminate\Http\Request  request()
      * @param  \App\news  $news
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $uuid)
+    public function update($uuid, Request $request)
     {
         $message = [
             'name.required' => '名稱為必填',
@@ -74,7 +74,8 @@ class NewsController extends \App\Http\Controllers\Controller
             'category.required' => '類別為必填',
             'lang.required' => '語言為必填',
         ];
-        $validator = Validator::make($request->all(), [
+
+        $validator = Validator::make(request()->all(), [
             'lang' => 'required',
             'name' => 'required',
             'brief' => 'required',
@@ -84,35 +85,38 @@ class NewsController extends \App\Http\Controllers\Controller
         ],$message);
 
         if (!$validator->fails()) {
-            $thisNews = $this->newsRepo->getByUUID($uuid, $request->input('lang'));
-            if(empty($thisNews)) {
+
+            $thisNews = $this->newsRepo->getByUUID($uuid, request()->input('lang'));
+            if (empty($thisNews)) {
                 throw new \Illuminate\Database\Eloquent\ModelNotFoundException("news not found");
             }
             $update = [];
-            if($request->hasFile('image')) {
+
+            if (request()->hasFile('image')) {
                 if(!empty($thisNews->translation[0]->image)) {
                     $fileSplit = explode('/', $thisNews->translation[0]->image);
                     $filename = $fileSplit[count($fileSplit)-1];
                     ImageTrait::deleteFile('/news/'.$uuid.'/'.$filename);
                 }
-                $image = $request->file('image');
+                $image = request()->file('image');
                 $mimeType = $image->getMimeType();
                 $filename = ImageTrait::saveFile($image, storage_path('app/public').'/news/'.$uuid, ImageTrait::transMimeType($mimeType));
                 $update['image'] = Storage::url('news/'.$uuid.'/'.$filename);
-                $update['originalFileName'] = $image->getClientOriginalName();
-            }else{
+                $update['image_name'] = $image->getClientOriginalName();
+            } else {
                 $update['image'] = $thisNews->translation[0]->image ?? null;
-                $update['originalFileName'] = $thisNews->translation[0]->image_name ?? null;
+                $update['image_name'] = $thisNews->translation[0]->image_name ?? null;
             }
+
             $update['uuid'] = $uuid;
-            $update['lang'] = $request->input('lang');
-            $update['name'] = $request->input('name');
-            $update['brief'] = $request->input('brief');
-            $update['start_date'] = $request->input('start_date');
-            $update['end_date'] = $request->input('end_date');
-            $update['category'] = $request->input('category');
-            $update['tags'] = $request->input('tags') ?? null;
-            $update['desc'] = $request->input('desc') ?? null;
+            $update['lang'] = request()->input('lang');
+            $update['name'] = request()->input('name');
+            $update['brief'] = request()->input('brief');
+            $update['start_date'] = request()->input('start_date');
+            $update['end_date'] = request()->input('end_date');
+            $update['category'] = request()->input('category');
+            $update['tags'] = request()->input('tags') ?? null;
+            $update['desc'] = request()->input('desc') ?? null;
             $news = $this->newsRepo->update($update);
             return response()->json(['ReturnCode' => 0, 'news' => $news]);
             
@@ -120,20 +124,8 @@ class NewsController extends \App\Http\Controllers\Controller
             throw new BadRequestException($validator->errors());
         }
     }
-    /**
-     * @params
-     * name required
-     * brief required
-     * start_date required
-     * end_date required
-     * category required
-     * lang required
-     * 
-     * desc optional
-     * image optional
-     * tag optional
-     */
-    public function create(Request $request)
+
+    public function create()
     {
         $message = [
             'name.required' => '名稱為必填',
@@ -143,7 +135,12 @@ class NewsController extends \App\Http\Controllers\Controller
             'category.required' => '類別為必填',
             'lang' => '語言為必填',
         ];
-        $validator = Validator::make($request->all(), [
+        /* Optional
+            image: file
+            desc: long text
+            tags: text, comma separated
+        */
+        $validator = Validator::make(request()->all(), [
             'lang' => 'required',
             'name' => 'required',
             'brief' => 'required',
@@ -154,24 +151,28 @@ class NewsController extends \App\Http\Controllers\Controller
 
         if (!$validator->fails()) {
             $create = [];
-            $uuid = Str::uuid();;
-            if($request->hasFile('image')) {
-                $image = $request->file('image');
+            $uuid = Str::uuid();
+
+            if (request()->hasFile('image')) {
+                $image = request()->file('image');
                 $mimeType = $image->getMimeType();
-                $filename = ImageTrait::saveFile($image, storage_path('app/public').'/news/'.$uuid, ImageTrait::transMimeType($mimeType));
-                $update['image'] = Storage::url('news/'.$uuid.'/'.$filename);
-                $update['originalFileName'] = $image->getClientOriginalName();
+                $filename = ImageTrait::saveFile($image, storage_path('app/public').'/news/'.$uuid,
+                                                 ImageTrait::transMimeType($mimeType));
+                $create['image'] = Storage::url('news/'.$uuid.'/'.$filename);
+                $create['image_name'] = $image->getClientOriginalName();
             }
+
             $create['uuid'] = $uuid;
-            $create['lang'] = $request->input('lang');
-            $create['name'] = $request->input('name');
-            $create['brief'] = $request->input('brief');
-            $create['start_date'] = $request->input('start_date');
-            $create['end_date'] = $request->input('end_date');
-            $create['category'] = $request->input('category');
-            $create['tags'] = $request->input('tags') ?? null;
-            $create['desc'] = $request->input('desc') ?? null;
+            $create['lang'] = request()->input('lang');
+            $create['name'] = request()->input('name');
+            $create['brief'] = request()->input('brief');
+            $create['start_date'] = request()->input('start_date');
+            $create['end_date'] = request()->input('end_date');
+            $create['category'] = request()->input('category');
+            $create['tags'] = request()->input('tags') ?? null;
+            $create['desc'] = request()->input('desc') ?? null;
             $news = $this->newsRepo->create($create);
+
             return response()->json(['ReturnCode' => 0, 'news' => $news]);
         } else {
             throw new BadRequestException($validator->errors());
@@ -197,17 +198,16 @@ class NewsController extends \App\Http\Controllers\Controller
             if(empty($news)) {
                 throw new \Illuminate\Database\Eloquent\ModelNotFoundException("news not found");
             }
-            //return $news;
             return new SingleNewsResources($news);
         } else {
             throw new BadRequestException($validator->errors());
         }
     }
 
-    public function delete($uuid, Request $request)
+    public function delete($uuid)
     {
         $data = [];
-        $data['lang'] = $request->input("lang") ?? "";
+        $data['lang'] = request()->input("lang") ?? null;
         $data['uuid'] = $uuid;
 
         $validator = Validator::make($data, [
@@ -215,17 +215,10 @@ class NewsController extends \App\Http\Controllers\Controller
         ]);
 
         if (!$validator->fails()) {
-            if(!empty($data['lang'])) {
-                if($this->newsRepo->checkOneLangNews($data['uuid'], $data['lang']) == 0) {
-                    throw new \Illuminate\Database\Eloquent\ModelNotFoundException("news not found");
-                }
-                $this->newsRepo->deleteLanguage($data['uuid'], $data['lang']);
-            }else{
-                if($this->newsRepo->checkNews($data['uuid']) == 0) {
-                    throw new \Illuminate\Database\Eloquent\ModelNotFoundException("news not found");
-                }
-                $this->newsRepo->delete($data['uuid']);
+            if ($this->newsRepo->checkOneLangNews($data['uuid'], $data['lang']) == 0) {
+                throw new \Illuminate\Database\Eloquent\ModelNotFoundException("news not found");
             }
+            $this->newsRepo->delete($data['uuid'], $data['lang']);
             
             return response()->json(['ReturnCode' => 0]);
         } else {

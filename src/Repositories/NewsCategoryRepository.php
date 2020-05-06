@@ -2,63 +2,69 @@
 
 namespace Scaupize1123\JustOfficalNews\Repositories;
 
+use Scaupize1123\JustOfficalNews\Language;
 use Scaupize1123\JustOfficalNews\NewsCategory;
 use Scaupize1123\JustOfficalNews\NewsCategoryTranslation;
-use Scaupize1123\JustOfficalNews\Language;
-use Scaupize1123\JustOfficalNewsResources\NewsCategory as NewsCategoryResources;
-use Illuminate\Support\Str;
 use Scaupize1123\JustOfficalNews\Interfaces\NewsCategoryRepositoryInterface;
+use Scaupize1123\JustOfficalNewsResources\NewsCategory as NewsCategoryResources;
 
 class NewsCategoryRepository implements NewsCategoryRepositoryInterface
 {
-    public function translationExists($filter) {
+    private function translationExists($filter) {
         return function($q) use ($filter) {
-            $q->where('status', 1);
-            if(!empty($filter['text'])) {
-                 $q->where(function($query) use ($filter) {
-                    $query->where('name', 'like', '%'.$filter['text'].'%');
-                });
+            if(!empty($filter['lang'])) {
+                $q->where('language_id', $filter['lang']);
             }
-           
+            if(!empty($filter['text'])) {
+                $q->where(function($query) use ($filter) {
+                   $query->where('name', 'like', '%'.$filter['text'].'%');
+               });
+            }
+            $q->where('status', 1);
         };
     }
 
-    public function getTranslation($filter) {
+    private function getTranslation($filter) {
         return function($q) use ($filter) {
-            $q->where('status', 1);
-            if(!empty($filter['lang'])){
+            if(!empty($filter['lang'])) {
                 $q->where('language_id', $filter['lang']);
             }
-            $q->where(function($query) use ($filter) {
-                $query->where('name', 'like', '%'.$filter['text'].'%');
-            });
+            if(!empty($filter['text'])) {
+                $q->where(function($query) use ($filter) {
+                   $query->where('name', 'like', '%'.$filter['text'].'%');
+               });
+            }
+            $q->where('status', 1);
         };
     }
-    //$cate->join('news_category_translation','news_category.id','=','news_category_translation.news_category_id')->orderBy('news_category_translation.name','desc')->selectRaw('DISTINCT news_category.id')->with('translation')->get();
+    
+    // get all list
     public function getList($filter) {
         $newsCategory = NewsCategory::where('status', 1)
-        ->with(['translation' => function($q) use ($filter) {
-            if(!empty($filter['lang'])){
-                $q->where('language_id', $filter['lang']);
-            }
-        }, 'translation.language'])
-        ->orderBy($filter['sort_name'], $filter['sort_type'])->get();
-        
+            ->whereHas('translation', $this->translationExists($filter))
+            ->with(['translation' => function($q) use ($filter) {
+                if(!empty($filter['lang'])) {
+                    $q->where('language_id', $filter['lang']);
+                }
+            }, 'translation.language'])
+            ->orderBy($filter['sort_name'], $filter['sort_type'])->get();
+
         return $newsCategory;
     }
 
+    // get paginate list
     public function getListPage($filter) {
-        $newsCategory = NewsCategory::join('news_category_translation','news_category.id','=','news_category_translation.news_category_id')
-        ->where('news_category_translation.language_id', $filter['langSort'])
-        ->orderBy($filter['sort_name'], $filter['sort_type'])
-        ->selectRaw('DISTINCT news_category.id, news_category.created_at')
-        ->WhereHas('translation', $this->translationExists($filter))
-        ->with(['translation' => $this->getTranslation($filter), 'translation.language'])
-        ->paginate($filter['size']);
-        // $newsCategory = NewsCategory::where('status', 1)
-        // ->WhereHas('translation', $this->translationExists($filter))
-        // ->with(['translation' => $this->getTranslation($filter), 'translation.language'])
-        // ->orderBy($filter['sort_name'], $filter['sort_type'])->paginate($filter['size']);
+        // $newsCategory = NewsCategory::join('news_category_translation','news_category.id','=','news_category_translation.news_category_id')
+        //     ->where('news_category_translation.language_id', $filter['langSort'])
+        //     ->orderBy($filter['sort_name'], $filter['sort_type'])
+        //     ->selectRaw('DISTINCT news_category.id, news_category.created_at')
+        //     ->WhereHas('translation', $this->translationExists($filter))
+        //     ->with(['translation' => $this->getTranslation($filter), 'translation.language'])
+        //     ->paginate($filter['size']);
+        $newsCategory = NewsCategory::where('status', 1)
+            ->whereHas('translation', $this->translationExists($filter))
+            ->with(['translation' => $this->getTranslation($filter), 'translation.language'])
+            ->paginate($filter['size']);
         
         return $newsCategory;
     }
@@ -69,11 +75,11 @@ class NewsCategoryRepository implements NewsCategoryRepositoryInterface
     }
 
     public function create($category) {
-        $inserts = [];
         $newsCategory = NewsCategory::create([
             "status" => 1,
         ]);
         $id = $newsCategory->id;
+
         $creates = [];
         collect($category)->each(function($value) use ($id, &$creates) {
             $create = [
@@ -95,6 +101,7 @@ class NewsCategoryRepository implements NewsCategoryRepositoryInterface
             ->where('status', '1')
             ->with('translation')
             ->first();
+
         collect($category)->each(function($value) use ($id) {
             $update = [
                 "name" => $value['name'],
@@ -105,12 +112,13 @@ class NewsCategoryRepository implements NewsCategoryRepositoryInterface
             NewsCategoryTransLation::updateOrCreate([
                 'news_category_id' => $id,
                 'language_id' => $value['lang']
-            ],$update);
+            ], $update);
         });
     }
 
     public function getGroupByLang() {
         $categories = NewsCategory::where('status', 1)->with('translation', 'translation.language')->get();
+        
         $langList = collect([]);
         $categories->each(function($category) use (&$langList) {
             $category->translation->each(function($translation) use (&$langList) {

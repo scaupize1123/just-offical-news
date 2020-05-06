@@ -11,7 +11,7 @@ class NewsTranslation extends Model
                             'desc',
                             'language_id',
                             'status',
-                            'image_base64',
+                            'image_name',
                             'image',
                             'news_id'];
 

@@ -12,9 +12,5 @@ Route::group(['prefix' => 'api','middleware' => ['jwt.auth']], function () {
     Route::get('/news-categories/{id}', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsCategoryController@showSingle');
     Route::post('/news-categories', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsCategoryController@create');
     Route::put('/news-categories/{id}', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsCategoryController@update');
-    Route::delete('/news-categories/{id}', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsCategoryController@delete');
-    
-    Route::get('/news/{uuid}', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsController@showSingle')->name('news.showSingle');
-        
+    Route::delete('/news-categories/{id}', 'Scaupize1123\JustOfficalNews\Controllers\Api\NewsCategoryController@delete');        
 });
-

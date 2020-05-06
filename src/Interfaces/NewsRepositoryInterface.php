@@ -4,14 +4,18 @@ namespace Scaupize1123\JustOfficalNews\Interfaces;
 
 interface NewsRepositoryInterface
 {
-    //get one news by UUID
-    public function getByUUID($uuid, $lang = null);
-    //delete one language news
-    public function delete($uuid);
-    //delete one news
-    //public function deleteAllLanguage($uuid, $lang);
-    //create news
+    public function getListPage($filter);
+
+    public function delete($uuid, $lang = null);
+
     public function create($create);
-    //update news
+
     public function update($update);
+
+    public function getByUUID($uuid, $lang = null);
+
+    //check lang news exist
+    public function checkOneLangNews($uuid, $lang);
+
+    public function checkNews($uuid);
 }

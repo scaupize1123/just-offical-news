@@ -2,12 +2,12 @@
 
 namespace Scaupize1123\JustOfficalNews\Controllers\Api;
 
-use Scaupize1123\JustOfficalNews\NewsCategory;
-use Illuminate\Http\Request;
 use Validator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Input;
-use Scaupize1123\JustOfficalNews\Interfaces\NewsCategoryRepositoryInterface;
 use App\Exceptions\Api\BadRequestException;
+use Scaupize1123\JustOfficalNews\NewsCategory;
+use Scaupize1123\JustOfficalNews\Interfaces\NewsCategoryRepositoryInterface;
 use Scaupize1123\JustOfficalNews\Resources\NewsCategory as NewsCategoryResources;
 
 class NewsCategoryController extends \App\Http\Controllers\Controller
@@ -23,18 +23,20 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create(Request $request)
+    public function create()
     {
         $messages = [
-            'category.required' => '必須包含名稱',
+            'category.*.name.required' => '必須包含名稱',
+            'category.*.lang.required' => '必須包含語言',
         ];
 
-        $validator = Validator::make($request->all(), [
-            'category' => 'required',
+        $validator = Validator::make(request()->all(), [
+            'category.*.name' => 'required',
+            'category.*.lang' => 'required',
         ],$messages);
 
         if (!$validator->fails()) {
-            $data = $request->input('category');
+            $data = request()->input('category');
             $newsCategory = $this->newsCategoryRepo->create($data);
             $result = [];
             $result['data'] = $newsCategory;
@@ -45,18 +47,20 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update($id)
     {
         $messages = [
-            'category.required' => '必須包含分類資料',
+            'category.*.name.required' => '必須包含名稱',
+            'category.*.lang.required' => '必須包含語言',
             'id.required' => '必須包含id',
         ];
         $data = [];
-        $data['category'] = $request->input('category');
+        $data['category'] = request()->input('category');
         $data['id'] = $id;
 
         $validator = Validator::make($data, [
-            'category' => 'required',
+            'category.*.name' => 'required',
+            'category.*.lang' => 'required',
             'id' => 'required',
         ],$messages);
 
@@ -76,7 +80,7 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
      * @param  \App\NewsCategory  $news_category
      * @return \Illuminate\Http\Response
      */
-    public function delete(Request $request, $id)
+    public function delete($id)
     {
         $messages = [
             'id.required' => '必須包含id',
@@ -105,7 +109,7 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
         $filter['size'] = Input::get('size') ?? 10;
         $filter['text'] = Input::get('text') ?? '';
         $filter['sort'] = Input::get('sort') ?? 'sort_date_desc';
-        $filter['langSort'] = Input::get('langSort') ?? '1';
+        $filter['lang'] = Input::get('lang') ?? '1';
 
         if (Input::get('sort') === 'sort_date_desc') {
             $sort_name = 'created_at';
@@ -123,14 +127,14 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
 
         $filter['sort_name'] = $sort_name ?? 'created_at';
         $filter['sort_type'] = $sort_type ?? 'desc';
-        if(empty($filter['page'])) {
+        if (empty($filter['page'])) {
             return NewsCategoryResources::collection($this->newsCategoryRepo->getList($filter));
-        }else{
+        } else {
             return NewsCategoryResources::collection($this->newsCategoryRepo->getListPage($filter));
         }
     }
 
-    public function showSingle(Request $request, $id)
+    public function showSingle($id)
     {
         $messages = [
             'lang.required' => '必須包含語言',
