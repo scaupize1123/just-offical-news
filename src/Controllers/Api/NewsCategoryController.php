@@ -26,11 +26,14 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
     public function create()
     {
         $messages = [
+            'category.present' => '必須包含資料',
+            'category.min' => '必須包含資料',
             'category.*.name.required' => '必須包含名稱',
             'category.*.lang.required' => '必須包含語言',
         ];
 
         $validator = Validator::make(request()->all(), [
+            'category' => 'present|array|min:1',
             'category.*.name' => 'required',
             'category.*.lang' => 'required',
         ],$messages);
@@ -50,6 +53,8 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
     public function update($id)
     {
         $messages = [
+            'category.present' => '必須包含資料',
+            'category.min' => '必須包含資料',
             'category.*.name.required' => '必須包含名稱',
             'category.*.lang.required' => '必須包含語言',
             'id.required' => '必須包含id',
@@ -57,8 +62,9 @@ class NewsCategoryController extends \App\Http\Controllers\Controller
         $data = [];
         $data['category'] = request()->input('category');
         $data['id'] = $id;
-
+        
         $validator = Validator::make($data, [
+            'category' => 'present|array|min:1',
             'category.*.name' => 'required',
             'category.*.lang' => 'required',
             'id' => 'required',

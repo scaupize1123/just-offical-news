@@ -113,7 +113,9 @@ class NewsRepository implements NewsRepositoryInterface
 
     public function checkOneLangNews($uuid, $lang) {
         $data = News::where('uuid', $uuid)->whereHas('translation', function($q) use ($lang) {
-            $q->where('language_id', $lang);
+            if (!empty($lang)) {
+                $q->where('language_id', $lang);
+            }
         })->get();
 
         if($data->isEmpty()) {
